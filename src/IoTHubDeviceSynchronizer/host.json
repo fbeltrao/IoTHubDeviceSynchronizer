@@ -1,0 +1,9 @@
+{
+  "logger": {
+    "categoryFilter": {
+      "categoryLevels": {
+        "Host.Triggers.DurableTask": "Warning"
+      }
+    }
+  }
+}
