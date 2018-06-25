@@ -23,15 +23,15 @@ namespace IoTHubDeviceSynchronizer.ToExternal
         /// <param name="context"></param>
         /// <param name="log"></param>
         /// <returns></returns>
-        [FunctionName(nameof(ExternalRegistrySynchronizer_DeleteOrchestration))]
-        public static async Task ExternalRegistrySynchronizer_DeleteOrchestration(
+        [FunctionName(nameof(ExternalRegistrySynchronizer_DeleteDeviceOrchestration))]
+        public static async Task ExternalRegistrySynchronizer_DeleteDeviceOrchestration(
           [OrchestrationTrigger] DurableOrchestrationContext context, TraceWriter log)
         {
-            var input = context.GetInput<IoTHubEventGridListenerInput>();
-
+            var input = context.GetInput<DeviceDeleteOrchestrationInput>();
+            var deviceId = input.Device["deviceId"].ToString();
             if (!context.IsReplaying)
-                log.Info($"{nameof(ExternalRegistrySynchronizer_DeleteOrchestration)} started for {input.DeviceId} / {input.IotHubName}. {nameof(Settings.Instance.TwinCheckIntervalInSeconds)}: {Settings.Instance.TwinCheckIntervalInSeconds} secs, {nameof(Settings.Instance.TwinCheckMaxRetryCount)}: {Settings.Instance.TwinCheckMaxRetryCount}, {nameof(Settings.Instance.TwinCheckMaxIntervalInSeconds)}: {Settings.Instance.TwinCheckMaxIntervalInSeconds} secs, {nameof(Settings.Instance.TwinCheckRetryTimeoutInMinutes)}: {Settings.Instance.TwinCheckRetryTimeoutInMinutes} minutes");
-            
+                log.Info($"{nameof(ExternalRegistrySynchronizer_DeleteDeviceOrchestration)} started for {deviceId} / {input.IoTHubName}. {nameof(Settings.Instance.TwinCheckIntervalInSeconds)}: {Settings.Instance.TwinCheckIntervalInSeconds} secs, {nameof(Settings.Instance.TwinCheckMaxRetryCount)}: {Settings.Instance.TwinCheckMaxRetryCount}, {nameof(Settings.Instance.TwinCheckMaxIntervalInSeconds)}: {Settings.Instance.TwinCheckMaxIntervalInSeconds} secs, {nameof(Settings.Instance.TwinCheckRetryTimeoutInMinutes)}: {Settings.Instance.TwinCheckRetryTimeoutInMinutes} minutes");
+
             var deleteExternalDeviceSucceeded = await context.CallActivityWithRetryAsync<bool>(nameof(DeleteDeviceInExternalSystemActivity),
                 new RetryOptions(TimeSpan.FromSeconds(Settings.Instance.ExternalSystemCallRetryIntervalInSeconds), Settings.Instance.ExternalSystemCallMaxRetryCount)
                 {
@@ -42,7 +42,7 @@ namespace IoTHubDeviceSynchronizer.ToExternal
                 input);
 
 
-            log.Info($"{nameof(ExternalRegistrySynchronizer_DeleteOrchestration)} finished for {input.DeviceId} / {input.IotHubName}. Succeeded: {deleteExternalDeviceSucceeded.ToString()}");
+            log.Info($"{nameof(ExternalRegistrySynchronizer_DeleteDeviceOrchestration)} finished for {deviceId} / {input.IoTHubName}. Succeeded: {deleteExternalDeviceSucceeded.ToString()}");
         }
 
         /// <summary>
@@ -51,14 +51,14 @@ namespace IoTHubDeviceSynchronizer.ToExternal
         /// <param name="context"></param>
         /// <param name="log"></param>
         /// <returns></returns>
-        [FunctionName(nameof(ExternalRegistrySynchronizer_CreateOrchestration))]        
-        public static async Task ExternalRegistrySynchronizer_CreateOrchestration(
+        [FunctionName(nameof(ExternalRegistrySynchronizer_CreateDeviceOrchestration))]        
+        public static async Task ExternalRegistrySynchronizer_CreateDeviceOrchestration(
             [OrchestrationTrigger] DurableOrchestrationContext context, TraceWriter log)
         {
-            var input = context.GetInput<IoTHubEventGridListenerInput>();
+            var input = context.GetInput<DeviceCreateOrchestrationInput>();
 
             if (!context.IsReplaying)
-                log.Info($"{nameof(ExternalRegistrySynchronizer_CreateOrchestration)} started for {input.DeviceId} / {input.IotHubName}. {nameof(Settings.Instance.TwinCheckIntervalInSeconds)}: {Settings.Instance.TwinCheckIntervalInSeconds} secs, {nameof(Settings.Instance.TwinCheckMaxRetryCount)}: {Settings.Instance.TwinCheckMaxRetryCount}, {nameof(Settings.Instance.TwinCheckMaxIntervalInSeconds)}: {Settings.Instance.TwinCheckMaxIntervalInSeconds} secs, {nameof(Settings.Instance.TwinCheckRetryTimeoutInMinutes)}: {Settings.Instance.TwinCheckRetryTimeoutInMinutes} minutes");            
+                log.Info($"{nameof(ExternalRegistrySynchronizer_CreateDeviceOrchestration)} started for {input.DeviceId} / {input.IoTHubName}. {nameof(Settings.Instance.TwinCheckIntervalInSeconds)}: {Settings.Instance.TwinCheckIntervalInSeconds} secs, {nameof(Settings.Instance.TwinCheckMaxRetryCount)}: {Settings.Instance.TwinCheckMaxRetryCount}, {nameof(Settings.Instance.TwinCheckMaxIntervalInSeconds)}: {Settings.Instance.TwinCheckMaxIntervalInSeconds} secs, {nameof(Settings.Instance.TwinCheckRetryTimeoutInMinutes)}: {Settings.Instance.TwinCheckRetryTimeoutInMinutes} minutes");            
 
             // 1. If it is the start wait a bit until the device twin was updated            
             var deviceTwinCheckResult = await context.CallActivityWithRetryAsync<VerifyDeviceTwinResult>(nameof(VerifyDeviceTwinActivity),
@@ -74,7 +74,7 @@ namespace IoTHubDeviceSynchronizer.ToExternal
             var deviceInfo = new CreateExternalDeviceInput
             {
                 DeviceId = input.DeviceId,
-                IotHubName = input.IotHubName,
+                IotHubName = input.IoTHubName,
                 Properties = deviceTwinCheckResult.Properties,
             };
 
@@ -88,7 +88,7 @@ namespace IoTHubDeviceSynchronizer.ToExternal
                 input);
 
 
-            log.Info($"{nameof(ExternalRegistrySynchronizer_CreateOrchestration)} finished for {input.DeviceId} / {input.IotHubName}. Succeeded: {createExternalDeviceSucceeded.ToString()}");
+            log.Info($"{nameof(ExternalRegistrySynchronizer_CreateDeviceOrchestration)} finished for {input.DeviceId} / {input.IoTHubName}. Succeeded: {createExternalDeviceSucceeded.ToString()}");
         }
 
 
@@ -169,17 +169,17 @@ namespace IoTHubDeviceSynchronizer.ToExternal
                                     {
                                         log.Warning($"Direct device creation for device {deviceId} in iothub {iotHubName} failed, starting an orchestration. {ex.ToString()}");
 
-                                        // failed to create the device, starts an orchestration to retry more times
-                                        var deviceForwarderRequest = new IoTHubEventGridListenerInput(deviceId, iotHubName);
-                                        var instanceId = await starter.StartNewAsync(nameof(ExternalRegistrySynchronizer_CreateOrchestration), deviceForwarderRequest);
+                                        // failed to create the device immediately, starts an orchestration to retry more times
+                                        var deviceForwarderRequest = new DeviceCreateOrchestrationInput(deviceId, iotHubName);
+                                        var instanceId = await starter.StartNewAsync(nameof(ExternalRegistrySynchronizer_CreateDeviceOrchestration), deviceForwarderRequest);
                                         orchestrationInstances.Add(instanceId);
                                     }
                                 }
                                 else
                                 {
                                     // Otherwise start orchestration to wait until the device twin properties exist
-                                    var deviceForwarderRequest = new IoTHubEventGridListenerInput(deviceId, iotHubName);
-                                    var instanceId = await starter.StartNewAsync(nameof(ExternalRegistrySynchronizer_CreateOrchestration), deviceForwarderRequest);
+                                    var deviceForwarderRequest = new DeviceCreateOrchestrationInput(deviceId, iotHubName);
+                                    var instanceId = await starter.StartNewAsync(nameof(ExternalRegistrySynchronizer_CreateDeviceOrchestration), deviceForwarderRequest);
                                     orchestrationInstances.Add(instanceId);
                                 }
                                 break;
@@ -187,17 +187,18 @@ namespace IoTHubDeviceSynchronizer.ToExternal
 
                         case "devicedeleted":
                             {
+                                var deleteDeviceInput = new DeviceDeleteOrchestrationInput(data, iotHubName);
+
                                 try
                                 {
-                                    await DeleteDeviceInExternalSystemActivity(data, iotHubName, log);
+                                    await DeleteDeviceInExternalSystemActivity(deleteDeviceInput, log);
                                 }
                                 catch (Exception ex)
                                 {
                                     log.Warning($"Direct device delete for device {deviceId} in iothub {iotHubName} failed, starting an orchestration. {ex.ToString()}");
 
-                                    // failed to create the device, starts an orchestration to retry more times
-                                    var deviceForwarderRequest = new IoTHubEventGridListenerInput(deviceId, iotHubName);
-                                    var instanceId = await starter.StartNewAsync(nameof(ExternalRegistrySynchronizer_DeleteOrchestration), deviceForwarderRequest);
+                                    // failed to delete the device, starts an orchestration to retry more times
+                                    var instanceId = await starter.StartNewAsync(nameof(ExternalRegistrySynchronizer_DeleteDeviceOrchestration), deleteDeviceInput);
                                     orchestrationInstances.Add(instanceId);
                                 }
                                 break;

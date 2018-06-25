@@ -53,9 +53,9 @@ namespace IoTHubDeviceSynchronizer.ToExternal
 
 
         [FunctionName(nameof(VerifyDeviceTwinActivity))]
-        public static async Task<VerifyDeviceTwinResult> VerifyDeviceTwinActivity([ActivityTrigger] IoTHubEventGridListenerInput req, TraceWriter log)
+        public static async Task<VerifyDeviceTwinResult> VerifyDeviceTwinActivity([ActivityTrigger] DeviceCreateOrchestrationInput req, TraceWriter log)
         {
-            var iotHubConnectionString = Environment.GetEnvironmentVariable($"iothub_{req.IotHubName}");
+            var iotHubConnectionString = Environment.GetEnvironmentVariable($"iothub_{req.IoTHubName}");
             if (string.IsNullOrEmpty(iotHubConnectionString))
                 iotHubConnectionString = Settings.Instance.IoTHubConnectionString;
 
@@ -65,7 +65,7 @@ namespace IoTHubDeviceSynchronizer.ToExternal
             {
                 var deviceTwin = await rm.GetTwinAsync(req.DeviceId);
                 if (deviceTwin == null)
-                    throw new Exception($"Could not retrieve twin from device {req.DeviceId} in iothub {req.IotHubName}");
+                    throw new Exception($"Could not retrieve twin from device {req.DeviceId} in iothub {req.IoTHubName}");
 
 
                 var externalDeviceRegistry = Utils.ResolveExternalDeviceRegistry();
@@ -77,7 +77,7 @@ namespace IoTHubDeviceSynchronizer.ToExternal
                         Utils.TelemetryClient?.TrackEvent(Utils.Event_DeviceTwinCheckFail, new Dictionary<string, string>()
                         {
                             { "deviceId", req.DeviceId },
-                            { "iothubname", req.IotHubName },
+                            { "iothubname", req.IoTHubName },
                             { "missingProperty", prop }
                         });
 
@@ -118,35 +118,32 @@ namespace IoTHubDeviceSynchronizer.ToExternal
         /// <param name="log"></param>
         /// <returns></returns>
         [FunctionName(nameof(DeleteDeviceInExternalSystemActivity))]
-        public static async Task DeleteDeviceInExternalSystemActivity(JToken device, string iotHubName, TraceWriter log)
+        public static async Task DeleteDeviceInExternalSystemActivity([ActivityTrigger] DeviceDeleteOrchestrationInput input, TraceWriter log)
         {
             var externalDeviceRegistry = Utils.ResolveExternalDeviceRegistry();
-            var deviceId = device["deviceId"].ToString();
+            var deviceId = input.Device["deviceId"].ToString();
             try
             {
-                await externalDeviceRegistry.DeleteExternalDevice(device);
+                await externalDeviceRegistry.DeleteExternalDevice(input.Device);
 
-                log.Info($"Device {deviceId} from iothub {iotHubName} deleted");
+                log.Info($"Device '{deviceId}' from IoT Hub '{input.IoTHubName}' deleted");
 
                 Utils.TelemetryClient?.TrackEvent(Utils.Event_ExternalDeviceDeleted, new Dictionary<string, string>()
                 {
                     { "deviceId", deviceId },
-                    { "iothubname", iotHubName }
+                    { "iothubname", input.IoTHubName }
                 });
             }            
             catch (Exception ex)
             {
-                log.Error($"Failed to device {deviceId} from iothub {iotHubName}: {ex.Message}");
+                log.Error($"Failed to device {deviceId} from IoT Hub '{input.IoTHubName}': {ex.Message}");
 
                 Utils.TelemetryClient?.TrackEvent(Utils.Event_ExternalDeviceDeletionError, new Dictionary<string, string>()
                 {
                     { "deviceId", deviceId },
-                    { "iothubname", iotHubName },
+                    { "iothubname", input.IoTHubName },
                     { "errorMessage", ex.Message },
                 });
-
-                if (!(ex is ExternalDeviceDeleteException))
-                    throw;
             }
         }        
     }
