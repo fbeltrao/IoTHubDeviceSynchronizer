@@ -67,9 +67,22 @@ namespace IoTHubDeviceSynchronizer.ToAzure
                     throw new Exception("Failed to create iot hub export job");
                 }
 
-                var iotHubJobStatus = await context.CallActivityWithRetryAsync<JobStatus>(nameof(CheckIoTJobDoneActivity),
-                    new RetryOptions(TimeSpan.FromSeconds(Settings.Instance.RetryIntervalForIoTHubExportJobInSeconds), Settings.Instance.RetryAttemptsForIoTHubExportJob),
-                    iotHubJobId);
+                var iotHubJobStatus = JobStatus.Unknown;
+                try
+                {
+                    iotHubJobStatus = await context.CallActivityWithRetryAsync<JobStatus>(nameof(CheckIoTJobDoneActivity),
+                        new RetryOptions(TimeSpan.FromSeconds(Settings.Instance.RetryIntervalForIoTHubExportJobInSeconds), Settings.Instance.RetryAttemptsForIoTHubExportJob),
+                        iotHubJobId);
+                }
+                catch (FunctionFailedException)
+                {
+                    iotHubJobStatus = JobStatus.Unknown;
+
+                    Utils.TelemetryClient?.TrackEvent(Utils.Event_IoTHubJobFailed, new Dictionary<string, string>()
+                    {
+                        { "iotHubJobId", iotHubJobId }
+                    });
+                }
 
                 if (iotHubJobStatus == JobStatus.Cancelled || iotHubJobStatus == JobStatus.Failed || iotHubJobStatus == JobStatus.Unknown)
                     throw new Exception($"IoT Hub Device export failed: status = {iotHubJobStatus}");
@@ -89,9 +102,24 @@ namespace IoTHubDeviceSynchronizer.ToAzure
                     // give it 30 seconds to finish, otherwise will wait 5x with an interval of 5 minutes between tries.
                     await context.CreateTimer(context.CurrentUtcDateTime.AddSeconds(30), CancellationToken.None);
 
-                    var importDevicesJobStatus = await context.CallActivityWithRetryAsync<JobStatus>(nameof(CheckIoTJobDoneActivity),
-                        new RetryOptions(TimeSpan.FromSeconds(Settings.Instance.RetryIntervalForIoTHubImportJobInSeconds), Settings.Instance.RetryAttemptsForIoTHubImportJob), 
-                        importJobId);
+                    var importDevicesJobStatus = JobStatus.Running;
+
+                    try
+                    {
+                        await context.CallActivityWithRetryAsync<JobStatus>(nameof(CheckIoTJobDoneActivity),
+                            new RetryOptions(TimeSpan.FromSeconds(Settings.Instance.RetryIntervalForIoTHubImportJobInSeconds), Settings.Instance.RetryAttemptsForIoTHubImportJob),
+                            importJobId);
+                    }
+                    catch (FunctionFailedException)
+                    {
+                        importDevicesJobStatus = JobStatus.Running;
+
+                        Utils.TelemetryClient?.TrackEvent(Utils.Event_IoTHubJobFailed, new Dictionary<string, string>()
+                        {
+                            { "iotHubJobId", importJobId }
+                        });
+
+                    }
 
                     if (importDevicesJobStatus != JobStatus.Completed)
                     {

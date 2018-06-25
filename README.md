@@ -131,9 +131,9 @@ In order to use connect to Actility the following application settings must be p
 In this scenario we poll devices from the external system and compare with the ones existing currently in IoT Hub, then create/delete the delta.
 
 1. Deploy the Azure Function to Azure. 
-1. Set the required properties in the Azure Function application settings.
-   FUNCTIONS_EXTENSION_VERSION => ~2.0.11776 (until [this issue](https://github.com/Azure/azure-functions-durable-extension/issues/347#event-1694583724) is fully available)\
-   iothub => Connection string to IoT Hub\
+1. Set the required properties in the Azure Function application settings.\
+   FUNCTIONS_EXTENSION_VERSION &rarr; ~2.0.11776 (until [this issue](https://github.com/Azure/azure-functions-durable-extension/issues/347#event-1694583724) is fully available)\
+   iothub &rarr; Connection string to IoT Hub\
    All external system properties
 1. Ensure that the timer Function (IoTHubSynchronizer_TimerTrigger) is enabled
 1. Wait until the function triggers or start it by calling the http triggered version manually https://{your-function-deployment-name}.azurewebsites.net/api/IoTHubSynchronizer_HttpListener
@@ -143,13 +143,13 @@ In this scenario we poll devices from the external system and compare with the o
 In this scenario we publish create/delete device events to external systems. Those events are published using IoT Hub built-in Event Grid integration.
 
 1. Deploy the Azure Function to Azure. 
-1. Set the required properties in the Azure Function application settings.
-   FUNCTIONS_EXTENSION_VERSION => ~2.0.11776 (until [this issue](https://github.com/Azure/azure-functions-durable-extension/issues/347#event-1694583724) is fully available)\
-   iothub_{your-master-iothub-name} => Connection string to IoT Hub\
+1. Set the required properties in the Azure Function application settings.\
+   FUNCTIONS_EXTENSION_VERSION &rarr; ~2.0.11776 (until [this issue](https://github.com/Azure/azure-functions-durable-extension/issues/347#event-1694583724) is fully available)\
+   iothub_&lt;your-master-iothub-name&gt; &rarr; Connection string to IoT Hub\
    All external system properties
 1. In your IoT Hub add a subscriber to the events, setting the endpoint add a subscriptions to all events pointing to the deployed azure function https://{your-function-deployment-name}.azurewebsites.net/api/ExternalRegistrySynchronizer_EventGridListener
 
-### Monitoring the deployment
+### Monitoring the synchronizations
 
 The function uses application insights custom events to notify when an device is created/deleted, among other things. It is strongly encouraged to [install](https://github.com/Azure/Azure-Functions/wiki/App-Insights) Application Insights in your function.
 
@@ -158,11 +158,15 @@ The following custom events will be triggered:
 |Event name|Triggered condition|
 |-|-|
 |ExternalDeviceCreated|Device is created in external system|
-|ExternalDeviceCreationError|Error happened creating device in external system|
+|ExternalDeviceCreationError|Transient error happened creating device in external system|
+|ExternalDeviceCreationFailed|Failed to create the device in external system. A manual process is required|
 |ExternalDeviceDeleted|Device is deleted in external system|
-|ExternalDeviceDeletedError|Error happened deleting device in external system|
-|DeviceTwinCheckFail|Device twin check fails, indicating that the device does not have all expected properties by the external system|
-|IoTHubJobCheckFailed|IoT Hub job is not yet complete|
+|ExternalDeviceDeletedError|Transient error happened deleting device in external system|
+|ExternalDeviceDeleteFailed|Failed to delete the device in external system. A manual process is required| 
+|DeviceTwinCheckFail|Device twin check fails, indicating that the device does not have all expected properties by the external system. This is a transient error|
+|DeviceTwinCheckFailed|Device twin check failed. Device will not be created in external system requiring a manual process to solve the problem|
+|IoTHubJobCheckNotComplete|IoT Hub job is not yet complete, this is a transient error|
+|IoTHubJobFailed|IoT Hub job failed to complete in a timely manner|
 |IoTHubDeviceCreated|Device is created in IoT Hub|
 |IoTHubDeviceDeleted|Device is deleted in IoT Hub|
 

@@ -19,13 +19,29 @@ namespace IoTHubDeviceSynchronizer
         internal static HttpClient HttpClient = new HttpClient();
         internal static TelemetryClient TelemetryClient;
 
+        /// <summary>Device is created in external system</summary>
         internal const string Event_ExternalDeviceCreated = "ExternalDeviceCreated";
+        /// <summary>Transient error happened creating device in external system</summary>
         internal const string Event_ExternalDeviceCreationError = "ExternalDeviceCreationError";
+        /// <summary>Failed to create the device in external system. A manual process is required</summary>
+        internal const string Event_ExternalDeviceCreationFailed = "ExternalDeviceCreationFailed";
+        /// <summary>Device is deleted in external system</summary>
         internal const string Event_ExternalDeviceDeleted = "ExternalDeviceDeleted";
+        /// <summary>Transient error happened deleting device in external system</summary>
         internal const string Event_ExternalDeviceDeletionError = "ExternalDeviceDeletedError";
+        /// <summary>Failed to delete the device in external system. A manual process is required</summary>
+        internal const string Event_ExternalDeviceDeleteFailed = "ExternalDeviceDeleteFailed";
+        /// <summary>Device twin check fails, indicating that the device does not have all expected properties by the external system. This is a transient error</summary>
         internal const string Event_DeviceTwinCheckFail = "DeviceTwinCheckFail";
-        internal const string Event_IoTHubJobCheckFailed = "IoTHubJobCheckFailed";
+        /// <summary>Device twin check failed. Device will not be created in external system requiring a manual process to solve the problem</summary>
+        internal const string Event_DeviceTwinCheckFailed = "DeviceTwinCheckFailed";
+        /// <summary>IoT Hub job is not yet complete, this is a transient error</summary>
+        internal const string Event_IoTHubJobCheckNotComplete = "IoTHubJobCheckNotComplete";
+        /// <summary>IoT Hub job failed to complete in a timely manner</summary>
+        internal const string Event_IoTHubJobFailed = "IoTHubJobFailed";
+        /// <summary>Device is created in IoT Hub</summary>
         internal const string Event_IoTHubDeviceCreated = "IoTHubDeviceCreated";
+        /// <summary>Device is deleted in IoT Hub</summary>
         internal const string Event_IoTHubDeviceDeleted = "IoTHubDeviceDeleted";
 
         static Utils()

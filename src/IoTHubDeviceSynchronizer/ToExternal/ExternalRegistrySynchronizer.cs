@@ -32,14 +32,31 @@ namespace IoTHubDeviceSynchronizer.ToExternal
             if (!context.IsReplaying)
                 log.Info($"{nameof(ExternalRegistrySynchronizer_DeleteDeviceOrchestration)} started for {deviceId} / {input.IoTHubName}. {nameof(Settings.Instance.TwinCheckIntervalInSeconds)}: {Settings.Instance.TwinCheckIntervalInSeconds} secs, {nameof(Settings.Instance.TwinCheckMaxRetryCount)}: {Settings.Instance.TwinCheckMaxRetryCount}, {nameof(Settings.Instance.TwinCheckMaxIntervalInSeconds)}: {Settings.Instance.TwinCheckMaxIntervalInSeconds} secs, {nameof(Settings.Instance.TwinCheckRetryTimeoutInMinutes)}: {Settings.Instance.TwinCheckRetryTimeoutInMinutes} minutes");
 
-            var deleteExternalDeviceSucceeded = await context.CallActivityWithRetryAsync<bool>(nameof(DeleteDeviceInExternalSystemActivity),
-                new RetryOptions(TimeSpan.FromSeconds(Settings.Instance.ExternalSystemCallRetryIntervalInSeconds), Settings.Instance.ExternalSystemCallMaxRetryCount)
-                {
-                    BackoffCoefficient = 2,                     // backoff coefficient ^2
-                    MaxRetryInterval = TimeSpan.FromSeconds(Settings.Instance.ExternalSystemCallMaxIntervalInSeconds),   // will wait for a new retry up to x seconds
-                    RetryTimeout = TimeSpan.FromMinutes(Settings.Instance.ExternalSystemCallRetryTimeoutInMinutes)      // will try up to x minutes
-                },
-                input);
+            var deleteExternalDeviceSucceeded = false;
+            try
+            {
+                deleteExternalDeviceSucceeded = await context.CallActivityWithRetryAsync<bool>(nameof(DeleteDeviceInExternalSystemActivity),
+                    new RetryOptions(TimeSpan.FromSeconds(Settings.Instance.ExternalSystemCallRetryIntervalInSeconds), Settings.Instance.ExternalSystemCallMaxRetryCount)
+                    {
+                        BackoffCoefficient = 2,                     // backoff coefficient ^2
+                        MaxRetryInterval = TimeSpan.FromSeconds(Settings.Instance.ExternalSystemCallMaxIntervalInSeconds),   // will wait for a new retry up to x seconds
+                        RetryTimeout = TimeSpan.FromMinutes(Settings.Instance.ExternalSystemCallRetryTimeoutInMinutes)      // will try up to x minutes
+                    },
+                    input);
+            }
+            catch (FunctionFailedException)
+            {
+                deleteExternalDeviceSucceeded = false;
+            }
+
+            if (!deleteExternalDeviceSucceeded)
+            {
+                Utils.TelemetryClient?.TrackEvent(Utils.Event_ExternalDeviceDeleteFailed, new Dictionary<string, string>()
+                    {
+                        { "deviceId", deviceId },
+                        { "iothubname", input.IoTHubName }
+                    });
+            }
 
 
             log.Info($"{nameof(ExternalRegistrySynchronizer_DeleteDeviceOrchestration)} finished for {deviceId} / {input.IoTHubName}. Succeeded: {deleteExternalDeviceSucceeded.ToString()}");
@@ -58,35 +75,68 @@ namespace IoTHubDeviceSynchronizer.ToExternal
             var input = context.GetInput<DeviceCreateOrchestrationInput>();
 
             if (!context.IsReplaying)
-                log.Info($"{nameof(ExternalRegistrySynchronizer_CreateDeviceOrchestration)} started for {input.DeviceId} / {input.IoTHubName}. {nameof(Settings.Instance.TwinCheckIntervalInSeconds)}: {Settings.Instance.TwinCheckIntervalInSeconds} secs, {nameof(Settings.Instance.TwinCheckMaxRetryCount)}: {Settings.Instance.TwinCheckMaxRetryCount}, {nameof(Settings.Instance.TwinCheckMaxIntervalInSeconds)}: {Settings.Instance.TwinCheckMaxIntervalInSeconds} secs, {nameof(Settings.Instance.TwinCheckRetryTimeoutInMinutes)}: {Settings.Instance.TwinCheckRetryTimeoutInMinutes} minutes");            
+                log.Info($"{nameof(ExternalRegistrySynchronizer_CreateDeviceOrchestration)} started for {input.DeviceId} / {input.IoTHubName}. {nameof(Settings.Instance.TwinCheckIntervalInSeconds)}: {Settings.Instance.TwinCheckIntervalInSeconds} secs, {nameof(Settings.Instance.TwinCheckMaxRetryCount)}: {Settings.Instance.TwinCheckMaxRetryCount}, {nameof(Settings.Instance.TwinCheckMaxIntervalInSeconds)}: {Settings.Instance.TwinCheckMaxIntervalInSeconds} secs, {nameof(Settings.Instance.TwinCheckRetryTimeoutInMinutes)}: {Settings.Instance.TwinCheckRetryTimeoutInMinutes} minutes");
 
             // 1. If it is the start wait a bit until the device twin was updated            
-            var deviceTwinCheckResult = await context.CallActivityWithRetryAsync<VerifyDeviceTwinResult>(nameof(VerifyDeviceTwinActivity),
-                new RetryOptions(TimeSpan.FromSeconds(Settings.Instance.TwinCheckIntervalInSeconds), Settings.Instance.TwinCheckMaxRetryCount)
-                {
-                    BackoffCoefficient = 2,                     // backoff coefficient ^2
-                    MaxRetryInterval = TimeSpan.FromSeconds(Settings.Instance.TwinCheckMaxIntervalInSeconds),   // will wait for a new retry up to x seconds
-                    RetryTimeout =  TimeSpan.FromMinutes(Settings.Instance.TwinCheckRetryTimeoutInMinutes)      // will try up to x minutes
-                },
-                input);
-
-            // Will only reach here once it succeededs (required properties were found)
-            var createExternalDeviceInput = new CreateExternalDeviceInput
+            VerifyDeviceTwinResult deviceTwinCheckResult = null;
+            
+            try
             {
-                DeviceId = input.DeviceId,
-                IotHubName = input.IoTHubName,
-                Properties = deviceTwinCheckResult.Properties,
-            };
+                deviceTwinCheckResult = await context.CallActivityWithRetryAsync<VerifyDeviceTwinResult>(nameof(VerifyDeviceTwinActivity),
+                    new RetryOptions(TimeSpan.FromSeconds(Settings.Instance.TwinCheckIntervalInSeconds), Settings.Instance.TwinCheckMaxRetryCount)
+                    {
+                        BackoffCoefficient = 2,                     // backoff coefficient ^2
+                        MaxRetryInterval = TimeSpan.FromSeconds(Settings.Instance.TwinCheckMaxIntervalInSeconds),   // will wait for a new retry up to x seconds
+                        RetryTimeout = TimeSpan.FromMinutes(Settings.Instance.TwinCheckRetryTimeoutInMinutes)      // will try up to x minutes
+                    },
+                    input);
+            }
+            catch (FunctionFailedException)
+            {
+                // no more retries for the device twin properties to exist, log a customEvent
+                Utils.TelemetryClient?.TrackEvent(Utils.Event_DeviceTwinCheckFailed, new Dictionary<string, string>()
+                    {
+                        { "deviceId", input.DeviceId },
+                        { "iothubname", input.IoTHubName }
+                    });                
+            }
 
-            var createExternalDeviceSucceeded = await context.CallActivityWithRetryAsync<bool>(nameof(CreateExternalDeviceActivity),
-                new RetryOptions(TimeSpan.FromSeconds(Settings.Instance.ExternalSystemCallRetryIntervalInSeconds), Settings.Instance.ExternalSystemCallMaxRetryCount)
+            var createExternalDeviceSucceeded = false;
+
+            if (deviceTwinCheckResult != null)
+            {
+                // Will only reach here once it succeededs (required properties were found)
+                var createExternalDeviceInput = new CreateExternalDeviceInput
                 {
-                    BackoffCoefficient = 2,                     // backoff coefficient ^2
-                    MaxRetryInterval = TimeSpan.FromSeconds(Settings.Instance.ExternalSystemCallMaxIntervalInSeconds),   // will wait for a new retry up to x seconds
-                    RetryTimeout = TimeSpan.FromMinutes(Settings.Instance.ExternalSystemCallRetryTimeoutInMinutes)      // will try up to x minutes
-                },
-                createExternalDeviceInput);
+                    DeviceId = input.DeviceId,
+                    IotHubName = input.IoTHubName,
+                    Properties = deviceTwinCheckResult.Properties,
+                };
 
+
+                try
+                {
+                    createExternalDeviceSucceeded = await context.CallActivityWithRetryAsync<bool>(nameof(CreateExternalDeviceActivity),
+                        new RetryOptions(TimeSpan.FromSeconds(Settings.Instance.ExternalSystemCallRetryIntervalInSeconds), Settings.Instance.ExternalSystemCallMaxRetryCount)
+                        {
+                            BackoffCoefficient = 2,                     // backoff coefficient ^2
+                        MaxRetryInterval = TimeSpan.FromSeconds(Settings.Instance.ExternalSystemCallMaxIntervalInSeconds),   // will wait for a new retry up to x seconds
+                        RetryTimeout = TimeSpan.FromMinutes(Settings.Instance.ExternalSystemCallRetryTimeoutInMinutes)      // will try up to x minutes
+                    },
+                        createExternalDeviceInput);
+                }
+                catch (FunctionFailedException)
+                {
+                    // no more retries for the device twin properties to exist, log a customEvent
+                    Utils.TelemetryClient?.TrackEvent(Utils.Event_ExternalDeviceCreationFailed, new Dictionary<string, string>()
+                    {
+                        { "deviceId", input.DeviceId },
+                        { "iothubname", input.IoTHubName }
+                    });
+
+                    createExternalDeviceSucceeded = false;
+                }
+            }
 
             log.Info($"{nameof(ExternalRegistrySynchronizer_CreateDeviceOrchestration)} finished for {input.DeviceId} / {input.IoTHubName}. Succeeded: {createExternalDeviceSucceeded.ToString()}");
         }

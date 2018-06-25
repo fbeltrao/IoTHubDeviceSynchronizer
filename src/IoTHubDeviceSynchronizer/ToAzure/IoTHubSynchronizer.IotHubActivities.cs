@@ -260,7 +260,7 @@ namespace IoTHubDeviceSynchronizer.ToAzure
                 case JobStatus.Queued:
                 case JobStatus.Running:
                 case JobStatus.Scheduled:
-                    Utils.TelemetryClient?.TrackEvent(Utils.Event_IoTHubJobCheckFailed, new Dictionary<string, string>()
+                    Utils.TelemetryClient?.TrackEvent(Utils.Event_IoTHubJobCheckNotComplete, new Dictionary<string, string>()
                     {                        
                         { "jobId", jobId },
                         { "jobStatus", status.ToString() }
