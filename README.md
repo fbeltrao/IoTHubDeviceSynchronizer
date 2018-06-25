@@ -34,7 +34,9 @@ To support multiple IoT Hubs add each connected IoT Hub connection string as an 
 
 This solution is implemented as a durable function taking advantage of IoT Hub import/export device jobs. It collects all devices from both registries, creates a delta file and then submits as an import job to IoT Hub. The reason where are using durable functions is to be able to run for a longer time (iothub export job, collection external devices, comparing, iothub import job).
 
+
 ![Scheduled workflow](media/scheduled_workflow.png)
+
 
 ## IoT Hub with real-time synchronization
 
