@@ -17,6 +17,12 @@ There are a few solutions to this problem based on how the synchronization happe
 |IoT Hub as master with real-time synchronization|IoT Hub|Device changes are automatically sent to network provider using IoT Hub built-in event grid triggers|<ul><li>Network Server owner has no access to the end customer IoT Hub registry.</li><li>End customer works on a single registry for all his devices.</li><li>Scalable, doing on the first device creation will avoid hitting the IoT Hub registry with a job so probably less prone to incur in throttling, registry access is throttled more aggressively that device communication.</li></ul>|<ul><li>An Azure Function using EventGrid needs to be deployed and configured on Azure</li><li>All required device properties that Network provider registry needs must be entered on the device twin for every device in IoT Hub</li><li>End customer must be careful and never create devices in the Network provider registry.</li></ul>|Yes|
 
 
+
+## Implementation choice - Durable Functions
+
+The implementation found in this repository is using [Durable Functions](https://docs.microsoft.com/en-us/azure/azure-functions/durable-functions-overview) which is part of the serverless offers in Azure. Serverless is a good fit for this problem because the solution reacts to events happening in the system (device created/deleted, timed synchronization). Using standard Azure Functions to solve the problem was not ideal due to the fact that this workflow can span a few minutes/hours depending on the availability of the downstream system and/or the amount of events/devices being synchronized. Durable functions address these problems by allowing the orchestration of small activities with built-in support to retries with exponential back-off retries.
+
+
 ## Just-in-time device provision
 
 Opting for just-in-time device provision requires the network service to take an action whenever sending a message to IoT Hub fails to due to "unknown device" errors. The less secure solution relies in giving them full access to the target IoT Hub, which is not acceptable in most scenarios. A way to protect IoT Hub is providing a Façade used by the provider, thus protecting the underlying Azure IoT Hub. The sample project has a façade implementation to create and delete devices in an IoT Hub.
@@ -101,6 +107,11 @@ Customizing the sample implementation is possible through the following Applicat
 |retryIntervalForIoTHubImportJobInSeconds|Internal time (in seconds) between each IoT Hub Import jobs completion check|300 (5 minutes)|Desired interval in seconds|
 |retryAttemptsForIoTHubImportJob|Maximum amount of attempts to wait for IoT Hub Import job to complete|5|Desired attempts count|
 |ioTHubSynchronizerEnabled|Enables/disables synchronization to IoT Hub. It is better to actually disable the function so that timer triggers won't execute|true|true or false|
+|devicesChangeJobThreshold|The threshold in which device synchronization will use iot hub jobs.|100|To always use jobs define as 0|
+|externalSystemCallRetryIntervalInSeconds|Indicates the retry interval for external system calls to create/delete devices. Value in seconds|5 minutes|Amount of seconds|
+|externalSystemCallMaxRetryCount|Indicates the maximum retry count for external system calls to create/delete devices.|100|Maximum retries|
+|externalSystemCallMaxIntervalInSeconds|Indicates the maximum retry interval for external system calls to create/delete devices. Value is set in seconds|30 minutes|amount of seconds|
+|externalSystemCallRetryTimeoutInMinutes|Indicates the maximum total amount of time for external system calls retries. Value in minutes|1 day|amount of minutes|
 |APPINSIGHTS_INSTRUMENTATIONKEY|Application Insights instrumentation key. Strongly recommended to provide as this sample uses custom events to notify device operations||
 
 
@@ -154,6 +165,7 @@ The following custom events will be triggered:
 |IoTHubJobCheckFailed|IoT Hub job is not yet complete|
 |IoTHubDeviceCreated|Device is created in IoT Hub|
 |IoTHubDeviceDeleted|Device is deleted in IoT Hub|
+
 
 ### Contributors
 @fbeltrao and @ronnies

@@ -9,6 +9,31 @@ namespace IoTHubDeviceSynchronizer
         static readonly Settings singleton = new Settings();
         internal static Settings Instance { get { return singleton; } }
 
+
+        /// <summary>
+        /// Indicates the retry interval for external system calls to create/delete devices. Value in seconds
+        /// Default: 5 minutes
+        /// </summary>
+        public int ExternalSystemCallRetryIntervalInSeconds { get; set; }
+
+        /// <summary>
+        /// Indicates the maximum retry count for external system calls to create/delete devices.
+        /// Default: 100
+        /// </summary>
+        public int ExternalSystemCallMaxRetryCount { get; set; }
+
+        /// <summary>
+        /// Indicates the maximum retry interval for external system calls to create/delete devices. Value is set in seconds
+        /// Default: 30 minutes
+        /// </summary>
+        public int ExternalSystemCallMaxIntervalInSeconds { get; set; }
+
+        /// <summary>
+        /// Indicates the maximum total amount of time for external system calls retries. Value in minutes
+        /// Default: 1 day
+        /// </summary>
+        public int ExternalSystemCallRetryTimeoutInMinutes { get; set; }
+
         /// <summary>
         /// Indicates the device twin check interval in seconds
         /// This check happens to verify if the all properties of the external system have been placed in the device twin
@@ -43,7 +68,9 @@ namespace IoTHubDeviceSynchronizer
         public bool UseJobToExportIoTHubDevices { get; set; }
 
         /// <summary>
-        /// The threshold in which device synchronization will use iot hub jobs
+        /// The threshold in which device synchronization will use iot hub jobs.
+        /// 0: always use jobs
+        /// Default: 100
         /// </summary>
         public int DevicesChangeJobThreshold { get; set; }
 
@@ -142,6 +169,14 @@ namespace IoTHubDeviceSynchronizer
             this.RetryAttemptsForIoTHubImportJob = GetIntegerEnvironmentVariable("retryAttemptsForIoTHubImportJob", 5, 1);
 
             this.IoTHubSynchronizerEnabled = (Environment.GetEnvironmentVariable("ioTHubSynchronizerEnabled")?.ToLowerInvariant() ?? "true") == "true";
+
+
+            this.ExternalSystemCallRetryIntervalInSeconds = GetIntegerEnvironmentVariable("externalSystemDeviceCreationIntervalInSeconds", 60 * 5, 30);
+            this.ExternalSystemCallMaxRetryCount = GetIntegerEnvironmentVariable("externalSystemDeviceCreationMaxRetryCount", 100, 1);
+            this.ExternalSystemCallMaxIntervalInSeconds = GetIntegerEnvironmentVariable("externalSystemDeviceCreationMaxIntervalInSeconds", 60 * 30, 60);
+            this.ExternalSystemCallRetryTimeoutInMinutes = GetIntegerEnvironmentVariable("externalSystemDeviceCreationRetryTimeoutInMinutes", 60 * 24 * 1, 1);
+
+
         }
 
         private static int GetIntegerEnvironmentVariable(string variable, int defaultValue, int minValue)

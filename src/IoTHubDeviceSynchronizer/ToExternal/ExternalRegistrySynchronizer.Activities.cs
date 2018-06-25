@@ -18,7 +18,7 @@ namespace IoTHubDeviceSynchronizer.ToExternal
         /// <param name="log"></param>
         /// <returns></returns>
         [FunctionName(nameof(CreateExternalDeviceActivity))]
-        public static async Task CreateExternalDeviceActivity([ActivityTrigger] CreateExternalDeviceInput externalDevice, TraceWriter log)
+        public static async Task<bool> CreateExternalDeviceActivity([ActivityTrigger] CreateExternalDeviceInput externalDevice, TraceWriter log)
         {
             var externalDeviceRegistry = Utils.ResolveExternalDeviceRegistry();
 
@@ -34,6 +34,8 @@ namespace IoTHubDeviceSynchronizer.ToExternal
                         { "iothubname", externalDevice.IotHubName }
                     });
 
+                return true;
+
             }
             catch (Exception ex)
             {
@@ -45,9 +47,7 @@ namespace IoTHubDeviceSynchronizer.ToExternal
                 });
 
                 throw;
-            }
-
-           
+            }           
         }
 
 
@@ -117,7 +117,8 @@ namespace IoTHubDeviceSynchronizer.ToExternal
         /// <param name="iotHubName"></param>
         /// <param name="log"></param>
         /// <returns></returns>
-        static async Task DeleteDeviceInExternalSystem(JToken device, string iotHubName, TraceWriter log)
+        [FunctionName(nameof(DeleteDeviceInExternalSystemActivity))]
+        public static async Task DeleteDeviceInExternalSystemActivity(JToken device, string iotHubName, TraceWriter log)
         {
             var externalDeviceRegistry = Utils.ResolveExternalDeviceRegistry();
             var deviceId = device["deviceId"].ToString();
