@@ -93,8 +93,10 @@ namespace IoTHubDeviceSynchronizer
                     ValidUntil = DateTime.UtcNow.Add(validity)
                 };
             }
-
-            return null;
+            else
+            {
+                throw new Exception($"Failed to obtain access token at {uri}. Error: {await tokenRes.Content.ReadAsStringAsync()}");
+            }
         }
     }
 }

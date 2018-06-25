@@ -59,6 +59,9 @@ namespace IoTHubDeviceSynchronizer.ToExternal
             if (string.IsNullOrEmpty(iotHubConnectionString))
                 iotHubConnectionString = Settings.Instance.IoTHubConnectionString;
 
+            if (string.IsNullOrEmpty(iotHubConnectionString))
+                throw new Exception($"Could not find connection string for IoT Hub '{req.IoTHubName}'");
+
             RegistryManager rm = RegistryManager.CreateFromConnectionString(iotHubConnectionString);
 
             try
@@ -144,6 +147,8 @@ namespace IoTHubDeviceSynchronizer.ToExternal
                     { "iothubname", input.IoTHubName },
                     { "errorMessage", ex.Message },
                 });
+
+                throw;
             }
         }        
     }

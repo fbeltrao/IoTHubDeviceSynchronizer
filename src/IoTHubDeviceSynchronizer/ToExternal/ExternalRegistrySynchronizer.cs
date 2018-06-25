@@ -71,7 +71,7 @@ namespace IoTHubDeviceSynchronizer.ToExternal
                 input);
 
             // Will only reach here once it succeededs (required properties were found)
-            var deviceInfo = new CreateExternalDeviceInput
+            var createExternalDeviceInput = new CreateExternalDeviceInput
             {
                 DeviceId = input.DeviceId,
                 IotHubName = input.IoTHubName,
@@ -85,7 +85,7 @@ namespace IoTHubDeviceSynchronizer.ToExternal
                     MaxRetryInterval = TimeSpan.FromSeconds(Settings.Instance.ExternalSystemCallMaxIntervalInSeconds),   // will wait for a new retry up to x seconds
                     RetryTimeout = TimeSpan.FromMinutes(Settings.Instance.ExternalSystemCallRetryTimeoutInMinutes)      // will try up to x minutes
                 },
-                input);
+                createExternalDeviceInput);
 
 
             log.Info($"{nameof(ExternalRegistrySynchronizer_CreateDeviceOrchestration)} finished for {input.DeviceId} / {input.IoTHubName}. Succeeded: {createExternalDeviceSucceeded.ToString()}");
