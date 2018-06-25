@@ -12,7 +12,7 @@ There are a few solutions to this problem based on how the synchronization happe
 |Solution|Master Registry|How it works|Pros|Cons|In this Sample|
 |-|-|-|-|-|-|
 |Manual synchronization|Both|The end customer must create or delete the devices manually in both registry|<ul><li>No additional components needs to be deployed on the end customer Azure subscription.</li><li>No additional configuration</li><li>Secure</li></ul>|Error prone manual work. Would work only for small implementations like up to 100 devices|No|
-|Just-in-time device provision|Network Provider|Network Provider create devices just-in-time, when first message arrives | <ul><li>No additional components needs to be deployed on the end customer Azure subscription</li><li>No additional configuration</li><li>Scalable, doing on the first message will avoid hitting the IoT Hub registry with a job so probably never incurring in throttling, registry access is throttled more aggressively that device communication</li><ul>| The network provider has full registry access to the end customer IoT Hub. This is not acceptable in term of security by most end customers. Not ideal in case IoT Hub also has devices outside the network provider scope. Full access to IoT Hub can be replaced with a device create/delete Façade |Yes, Façade functions to add/remove devices in IoT Hub|
+|Just-in-time device provision|Network Provider|Network Provider create devices just-in-time, when first message arrives | <ul><li>No additional components needs to be deployed on the end customer Azure subscription</li><li>No additional configuration</li><li>Scalable, doing on the first message will avoid hitting the IoT Hub registry with a job so probably never incurring in throttling, registry access is throttled more aggressively that device communication</li><ul>| The network provider has full registry access to the end customer IoT Hub. This is not acceptable in term of security by most end customers. Not ideal in case IoT Hub also has devices outside the network provider scope. Full access to IoT Hub can be replaced with a device create/delete Faï¿½ade |Yes, Faï¿½ade functions to add/remove devices in IoT Hub|
 |Scheduled synchronization|Network Provider|Synchronization happens on a schedule base|<ul><li>Network Server owner has no access to the end customer IoT Hub registry.</li><li>End customer works with Network Provider device registry and does not need to manage the IoT Hub one. Good if all devices are connected through the network server.</li><li>No need to enter information on the device twin</li>|<ul><li>An Azure Durable Function solution needs to be deployed and configured, adding complexity and additional maintenance.</li><li>Synchronization is batch based on a scheduled so there is a waiting time between sync is done. A manual trigger is possible from the Azure portal.</li><li>Being a batch solution you will incur in device registry throttling (even when using the Bulk import feature of IoT Hub) so the scalability of the synchronization is also dictated by the IoT Hub instance type.</li></ul>|Yes|
 |IoT Hub as master with real-time synchronization|IoT Hub|Device changes are automatically sent to network provider using IoT Hub built-in event grid triggers|<ul><li>Network Server owner has no access to the end customer IoT Hub registry.</li><li>End customer works on a single registry for all his devices.</li><li>Scalable, doing on the first device creation will avoid hitting the IoT Hub registry with a job so probably less prone to incur in throttling, registry access is throttled more aggressively that device communication.</li></ul>|<ul><li>An Azure Function using EventGrid needs to be deployed and configured on Azure</li><li>All required device properties that Network provider registry needs must be entered on the device twin for every device in IoT Hub</li><li>End customer must be careful and never create devices in the Network provider registry.</li></ul>|Yes|
 
@@ -25,14 +25,13 @@ The implementation found in this repository is using [Durable Functions](https:/
 
 ## Just-in-time device provision
 
-Opting for just-in-time device provision requires the network service to take an action whenever sending a message to IoT Hub fails to due to "unknown device" errors. The less secure solution relies in giving them full access to the target IoT Hub, which is not acceptable in most scenarios. A way to protect IoT Hub is providing a Façade used by the provider, thus protecting the underlying Azure IoT Hub. The sample project has a façade implementation to create and delete devices in an IoT Hub.
+Opting for just-in-time device provision requires the network service to take an action whenever sending a message to IoT Hub fails to due to "unknown device" errors. The less secure solution relies in giving them full access to the target IoT Hub, which is not acceptable in most scenarios. A way to protect IoT Hub is providing a Faï¿½ade used by the provider, thus protecting the underlying Azure IoT Hub. The sample project has a faï¿½ade implementation to create and delete devices in an IoT Hub.
 
 Uri to create devices: POST https://xxxx/api/devices/{iothubname?}/{deviceId}
 
 Uri to delete devices: DELETE https://xxxx/api/devices/{iothubname?}/{deviceId}
 
 To support multiple IoT Hubs add each connected IoT Hub connection string as an application setting, having the key with the format ```iothub_<iot-hub-name-goes-here>```
-
 
 ## Scheduled Synchronization
 
@@ -90,18 +89,18 @@ static Lazy<IExternalDeviceRegistryService> externalDeviceRegistry = new Lazy<IE
 Customizing the sample implementation is possible through the following Application Settings:
 
 |Setting|Description|Default|Example|
-|-|-|-|
-|iothub|Default IoT Hub connection string where devices will be created||HostName=xxx.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=xxx|
-|iothub_&lt;iot-hub-name&gt;|Specific IoT Hub connection string, if you need to support multiple||HostName=xxx.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=xxx|
+|-|-|-|-|
+|iothub|Default IoT Hub connection string where devices will be created|||
+|iothub_&lt;iot-hub-name&gt;|Specific IoT Hub connection string, if you need to support multiple|||
 |twinCheckIntervalInSeconds|Interval in seconds in which iot hub device twin will be checked for completeness|60|60|
 |twinCheckMaxIntervalInSeconds|Indicates the device twin check maximum interval in seconds|5 minutes|300|
 |twinCheckMaxRetryCount|Indicates the device twin check maximum retry counts|100|100|
 |twinCheckRetryTimeoutInMinutes|Indicates the device twin check retry timeout, in other words, how long it will keep trying at most|2 days|2880|
-|AzureWebJobsStorage|Storage account where IoT Hub jobs and intermediate files will be stored. Automatically created during deployment to Azure||DefaultEndpointsProtocol=https;AccountName=xxx;AccountKey=xxx;EndpointSuffix=core.windows.net|
-|storage|Alternative storage account, in case AzureWebJobsStorage is empty or is set for debug "UseDevelopmentStorage=true"||DefaultEndpointsProtocol=https;AccountName=xxx;AccountKey=xxx;EndpointSuffix=core.windows.net|
+|AzureWebJobsStorage|Storage account where IoT Hub jobs and intermediate files will be stored. Automatically created during deployment to Azure|||
+|storage|Alternative storage account, in case AzureWebJobsStorage is empty or is set for debug "UseDevelopmentStorage=true"|||
 |externalSystemName|Name of the external system. Used to resolve ```IExternalDeviceRegistryService```|Actility|Actility|
-|iothubfacadeEnabled|Enables/disabled IoT Hub create/delete façade|true|true or false|
-|iotHubFacadeUseSoftDelete|Enables/disabled IoT Hub façade soft deletes. If enabled the façade delete will disable the device instead of delete it |false|true or false|
+|iothubfacadeEnabled|Enables/disabled IoT Hub create/delete faÃ§ade|true|true or false|
+|iotHubFacadeUseSoftDelete|Enables/disabled IoT Hub faÃ§ade soft deletes. If enabled the faï¿½ade delete will disable the device instead of delete it |false|true or false|
 |retryIntervalForIoTHubExportJobInSeconds|Internal time (in seconds) between each IoT Hub Export jobs completion check|60|Desired interval in seconds|
 |retryAttemptsForIoTHubExportJob|Maximum amount of attempts to wait for IoT Hub Export job to complete|5|Desired attempts count|
 |retryIntervalForIoTHubImportJobInSeconds|Internal time (in seconds) between each IoT Hub Import jobs completion check|300 (5 minutes)|Desired interval in seconds|
@@ -114,19 +113,18 @@ Customizing the sample implementation is possible through the following Applicat
 |externalSystemCallRetryTimeoutInMinutes|Indicates the maximum total amount of time for external system calls retries. Value in minutes|1 day|amount of minutes|
 |APPINSIGHTS_INSTRUMENTATIONKEY|Application Insights instrumentation key. Strongly recommended to provide as this sample uses custom events to notify device operations||
 
-
 ### Actility properties
 
 In order to use connect to Actility the following application settings must be provided:
 
-|Setting|Description|Default|Example|
-|-|-|-|
-|actility_api_token_uri|Uri for token creation||https://dx-api.thingpark.com/admin/latest/api/oauth/token|
-|actility_api_devices_uri|Uri for devices||https://dx-api.thingpark.com/core/latest/api/devices|
-|actility_api_client_id|Client ID to be used for authentication||Value provided by Actility|
-|actility_api_client_secret|Client secret to be used for authentication||Value provided by Actility|
+|Setting|Description|Example|
+|-|-|-|-|
+|actility_api_token_uri|Uri for token creation|https://dx-api.thingpark.com/admin/latest/api/oauth/token|
+|actility_api_devices_uri|Uri for devices|https://dx-api.thingpark.com/core/latest/api/devices|
+|actility_api_client_id|Client ID to be used for authentication|Value provided by Actility|
+|actility_api_client_secret|Client secret to be used for authentication|Value provided by Actility|
 
-### Setup: External System as Master
+## Setup: External System as Master
 
 In this scenario we poll devices from the external system and compare with the ones existing currently in IoT Hub, then create/delete the delta.
 
@@ -138,7 +136,7 @@ In this scenario we poll devices from the external system and compare with the o
 1. Ensure that the timer Function (IoTHubSynchronizer_TimerTrigger) is enabled
 1. Wait until the function triggers or start it by calling the http triggered version manually https://{your-function-deployment-name}.azurewebsites.net/api/IoTHubSynchronizer_HttpListener
 
-### Setup: IoT Hub as Master
+## Setup: IoT Hub as Master
 
 In this scenario we publish create/delete device events to external systems. Those events are published using IoT Hub built-in Event Grid integration.
 
@@ -149,9 +147,9 @@ In this scenario we publish create/delete device events to external systems. Tho
    All external system properties
 1. In your IoT Hub add a subscriber to the events, setting the endpoint add a subscriptions to all events pointing to the deployed azure function https://{your-function-deployment-name}.azurewebsites.net/api/ExternalRegistrySynchronizer_EventGridListener
 
-### Monitoring the synchronizations
+## Monitoring the solution
 
-The function uses application insights custom events to notify when an device is created/deleted, among other things. It is strongly encouraged to [install](https://github.com/Azure/Azure-Functions/wiki/App-Insights) Application Insights in your function.
+The function uses application insights custom events to notify when an device is created/deleted, among other things. It is strongly recommended to [install](https://github.com/Azure/Azure-Functions/wiki/App-Insights) Application Insights along side the Azure function.
 
 The following custom events will be triggered:
 
@@ -162,7 +160,7 @@ The following custom events will be triggered:
 |ExternalDeviceCreationFailed|Failed to create the device in external system. A manual process is required|
 |ExternalDeviceDeleted|Device is deleted in external system|
 |ExternalDeviceDeletedError|Transient error happened deleting device in external system|
-|ExternalDeviceDeleteFailed|Failed to delete the device in external system. A manual process is required| 
+|ExternalDeviceDeleteFailed|Failed to delete the device in external system. A manual process is required|
 |DeviceTwinCheckFail|Device twin check fails, indicating that the device does not have all expected properties by the external system. This is a transient error|
 |DeviceTwinCheckFailed|Device twin check failed. Device will not be created in external system requiring a manual process to solve the problem|
 |IoTHubJobCheckNotComplete|IoT Hub job is not yet complete, this is a transient error|
@@ -170,6 +168,13 @@ The following custom events will be triggered:
 |IoTHubDeviceCreated|Device is created in IoT Hub|
 |IoTHubDeviceDeleted|Device is deleted in IoT Hub|
 
+The following query in application insights log analytics will show all the devices that failed to be created in the external system since the last 2 days
+```
+customEvents
+| where timestamp >= ago(2d) and name == 'ExternalDeviceCreationFailed'
+| project timestamp, name, deviceId=customDimensions.deviceId
+| order by timestamp desc
+```
 
 ### Contributors
 @fbeltrao and @ronnies
