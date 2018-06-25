@@ -21,7 +21,7 @@ namespace IoTHubDeviceSynchronizer
 
         internal const string Event_ExternalDeviceCreated = "ExternalDeviceCreated";
         internal const string Event_ExternalDeviceCreationError = "ExternalDeviceCreationError";
-        internal const string Event_ExternalDeviceDeleted = "ExternalDeviceCreated";
+        internal const string Event_ExternalDeviceDeleted = "ExternalDeviceDeleted";
         internal const string Event_ExternalDeviceDeletionError = "ExternalDeviceDeletedError";
         internal const string Event_DeviceTwinCheckFail = "DeviceTwinCheckFail";
         internal const string Event_IoTHubJobCheckFailed = "IoTHubJobCheckFailed";
