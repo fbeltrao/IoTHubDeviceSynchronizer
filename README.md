@@ -16,16 +16,13 @@ There are a few solutions to this problem based on how the synchronization happe
 |Scheduled synchronization|Network Provider|Synchronization happens on a schedule base|<ul><li>Network Server owner has no access to the end customer IoT Hub registry.</li><li>End customer works with Network Provider device registry and does not need to manage the IoT Hub one. Good if all devices are connected through the network server.</li><li>No need to enter information on the device twin</li>|<ul><li>An Azure Durable Function solution needs to be deployed and configured, adding complexity and additional maintenance.</li><li>Synchronization is batch based on a scheduled so there is a waiting time between sync is done. A manual trigger is possible from the Azure portal.</li><li>Being a batch solution you will incur in device registry throttling (even when using the Bulk import feature of IoT Hub) so the scalability of the synchronization is also dictated by the IoT Hub instance type.</li></ul>|Yes|
 |IoT Hub as master with real-time synchronization|IoT Hub|Device changes are automatically sent to network provider using IoT Hub built-in event grid triggers|<ul><li>Network Server owner has no access to the end customer IoT Hub registry.</li><li>End customer works on a single registry for all his devices.</li><li>Scalable, doing on the first device creation will avoid hitting the IoT Hub registry with a job so probably less prone to incur in throttling, registry access is throttled more aggressively that device communication.</li></ul>|<ul><li>An Azure Function using EventGrid needs to be deployed and configured on Azure</li><li>All required device properties that Network provider registry needs must be entered on the device twin for every device in IoT Hub</li><li>End customer must be careful and never create devices in the Network provider registry.</li></ul>|Yes|
 
-
-
 ## Implementation choice - Durable Functions
 
 The implementation found in this repository is using [Durable Functions](https://docs.microsoft.com/en-us/azure/azure-functions/durable-functions-overview) which is part of the serverless offers in Azure. Serverless is a good fit for this problem because the solution reacts to events happening in the system (device created/deleted, timed synchronization). Using standard Azure Functions to solve the problem was not ideal due to the fact that this workflow can span a few minutes/hours depending on the availability of the downstream system and/or the amount of events/devices being synchronized. Durable functions address these problems by allowing the orchestration of small activities with built-in support to retries with exponential back-off retries.
 
-
 ## Just-in-time device provision
 
-Opting for just-in-time device provision requires the network service to take an action whenever sending a message to IoT Hub fails to due to "unknown device" errors. The less secure solution relies in giving them full access to the target IoT Hub, which is not acceptable in most scenarios. A way to protect IoT Hub is providing a Fa�ade used by the provider, thus protecting the underlying Azure IoT Hub. The sample project has a fa�ade implementation to create and delete devices in an IoT Hub.
+Opting for just-in-time device provision requires the network service to take an action whenever sending a message to IoT Hub fails to due to "unknown device" errors. The less secure solution relies in giving them full access to the target IoT Hub, which is not acceptable in most scenarios. A way to protect IoT Hub is providing a Façade used by the provider, thus protecting the underlying Azure IoT Hub. The sample project has a façade implementation to create and delete devices in an IoT Hub.
 
 Uri to create devices: POST https://xxxx/api/devices/{iothubname?}/{deviceId}
 
@@ -36,19 +33,7 @@ To support multiple IoT Hubs add each connected IoT Hub connection string as an 
 ## Scheduled Synchronization
 
 This solution is implemented as a durable function taking advantage of IoT Hub import/export device jobs. It collects all devices from both registries, creates a delta file and then submits as an import job to IoT Hub. The reason where are using durable functions is to be able to run for a longer time (iothub export job, collection external devices, comparing, iothub import job).
-
-<table border="0" width="100%" style="border-width: 0px;">
-    <tbody>
-    <tr>
-        <td width="50%"><img src="media/scheduled_workflow.png" /></td>
-        <td width="50%">
-            <script src="https://gist.github.com/fbeltrao/f068725db08290851027597938520c81.js"></script>
-        </td>
-    </tr>
-    </tbody>
-</table>
-
-
+![Scheduled workflow](media/scheduled_workflow.png)
 
 ## IoT Hub with real-time synchronization
 
@@ -59,7 +44,7 @@ This sample implementation relies on this information being set in the IoT Hub d
 ![IoT Hub synchronizes external system](media/event_grid_workflow.png)
 
 
-## Supporting another external registry
+## Adding support to another external system
 
 The current implementation only supports Actility as an external device registry provider. To add a new one the following changes have to be made:
 
@@ -84,7 +69,7 @@ static Lazy<IExternalDeviceRegistryService> externalDeviceRegistry = new Lazy<IE
 ```
 3. Set the Application Settings property ```externalSystemName``` accordingly
 
-## Properties
+## Customizing the Azure Function
 
 Customizing the sample implementation is possible through the following Application Settings:
 
