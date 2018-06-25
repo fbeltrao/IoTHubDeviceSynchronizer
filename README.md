@@ -33,6 +33,7 @@ To support multiple IoT Hubs add each connected IoT Hub connection string as an 
 ## Scheduled Synchronization
 
 This solution is implemented as a durable function taking advantage of IoT Hub import/export device jobs. It collects all devices from both registries, creates a delta file and then submits as an import job to IoT Hub. The reason where are using durable functions is to be able to run for a longer time (iothub export job, collection external devices, comparing, iothub import job).
+
 ![Scheduled workflow](media/scheduled_workflow.png)
 
 ## IoT Hub with real-time synchronization
@@ -42,7 +43,6 @@ This solution relies on Event Grid events from IoT Hub to act upon device creati
 This sample implementation relies on this information being set in the IoT Hub device twin tags. If the required information is available at the time of the event grid notification (device twin properties are part of the payload) the device will be created without requiring any complex workflow. In case the device twin is incomplete (i.e creating the device from Azure Portal) a durable functions is started to continue validating the twin properties, creating the device once all properties are available or a timeout is reached.
 
 ![IoT Hub synchronizes external system](media/event_grid_workflow.png)
-
 
 ## Adding support to another external system
 
