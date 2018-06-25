@@ -87,7 +87,7 @@ Customizing the sample implementation is possible through the following Applicat
 |storage|Alternative storage account, in case AzureWebJobsStorage is empty or is set for debug "UseDevelopmentStorage=true"|||
 |externalSystemName|Name of the external system. Used to resolve ```IExternalDeviceRegistryService```|Actility|Actility|
 |iothubfacadeEnabled|Enables/disabled IoT Hub create/delete façade|true|true or false|
-|iotHubFacadeUseSoftDelete|Enables/disabled IoT Hub façade soft deletes. If enabled the fa�ade delete will disable the device instead of delete it |false|true or false|
+|iotHubFacadeUseSoftDelete|Enables/disabled IoT Hub façade soft deletes. If enabled the façade delete will disable the device instead of delete it |false|true or false|
 |retryIntervalForIoTHubExportJobInSeconds|Internal time (in seconds) between each IoT Hub Export jobs completion check|60|Desired interval in seconds|
 |retryAttemptsForIoTHubExportJob|Maximum amount of attempts to wait for IoT Hub Export job to complete|5|Desired attempts count|
 |retryIntervalForIoTHubImportJobInSeconds|Internal time (in seconds) between each IoT Hub Import jobs completion check|300 (5 minutes)|Desired interval in seconds|
@@ -105,11 +105,11 @@ Customizing the sample implementation is possible through the following Applicat
 In order to use connect to Actility the following application settings must be provided:
 
 |Setting|Description|Example|
-|-|-|-|-|
-|actility_api_token_uri|Uri for token creation|https://dx-api.thingpark.com/admin/latest/api/oauth/token|
-|actility_api_devices_uri|Uri for devices|https://dx-api.thingpark.com/core/latest/api/devices|
-|actility_api_client_id|Client ID to be used for authentication|Value provided by Actility|
-|actility_api_client_secret|Client secret to be used for authentication|Value provided by Actility|
+|-|-|-|
+|actility_api_token_uri | Uri for token creation | https://dx-api.thingpark.com/admin/latest/api/oauth/token |
+|actility_api_devices_uri | Uri for devices |https://dx-api.thingpark.com/core/latest/api/devices |
+|actility_api_client_id|Client ID to be used for authentication | Value provided by Actility |
+|actility_api_client_secret | Client secret to be used for authentication |Value provided by Actility |
 
 ## Setup: External System as Master
 
